@@ -1,0 +1,28 @@
+{
+  "feb_dec": {
+    "perfect": 75126,
+    "naive": 64284,
+    "A_basic": 62848,
+    "B_history": 68084,
+    "C_system": 71040,
+    "D_weather": 71403,
+    "E_pre_auction": 67272
+  },
+  "apr_dec": {
+    "perfect": 62726,
+    "naive": 54110,
+    "A_basic": 55472,
+    "B_history": 57174,
+    "C_system": 59570,
+    "D_weather": 59739,
+    "E_pre_auction": 56999
+  },
+  "mae": {
+    "A_basic": 24.4,
+    "B_history": 21.5,
+    "C_system": 13.3,
+    "D_weather": 13.7,
+    "E_pre_auction": 18.1,
+    "naive": 24.7
+  }
+}

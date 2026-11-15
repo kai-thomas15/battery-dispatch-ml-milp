@@ -1,0 +1,12 @@
+Battery 1 MW / 2 MWh, round-trip efficiency ~90%, wear cost 10 EUR/MWh
+Period: 1 Feb - 31 Dec 2025 (day-ahead, DE/LU, SMARD)
+
+Forecast error (MAE)   naive: 24.7 EUR/MWh   ML: 24.2 EUR/MWh
+
+Profit over the period:
+  perfect foresight (upper bound):     75,126 EUR
+  ML forecast + MILP:                  63,020 EUR  (84% of upper bound)
+  naive forecast + MILP:               64,279 EUR  (86% of upper bound)
+
+ML vs naive: -1,259 EUR
+LP relaxation charged and discharged in the same hour on 2 days (3 hours) -> binaries needed
