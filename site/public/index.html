@@ -4,10 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Battery Dispatch · Kai Scott Thomas</title>
-  <meta name="description" content="A battery planned with an ML price forecast and a MILP earned €68,084 per MW on the German day-ahead market from February to December 2025, €3,800 more than a simple rule." />
+  <meta name="description" content="Dispatch optimisation for a 1 MW / 2 MWh battery on the German day-ahead market. In a February–December 2025 backtest, a MILP schedule fed by a price forecast earned €68,084, €3,800 more than a simple rule." />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Battery Dispatch · Kai Scott Thomas" />
-  <meta property="og:description" content="ML price forecasts plus a MILP schedule for a battery on the German day-ahead market, backtested on 2025 prices with three years of history." />
+  <meta property="og:description" content="Energy asset optimisation: a MILP dispatch schedule for a battery on the German day-ahead market, driven by a price forecast and backtested on 2025 prices." />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" sizes="48x48" href="/assets/icon-48.png" />
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
@@ -72,8 +72,6 @@
     .headline { margin-top: 40px; padding-top: 22px; border-top: 2px solid var(--ink); max-width: 700px; }
     .headline-n { display: block; font-size: clamp(44px, 8vw, 72px); font-weight: 600; line-height: 1; color: var(--money); }
     .headline-l { display: block; margin-top: 10px; font-size: 18px; line-height: 1.45; font-weight: 500; max-width: 40em; }
-    .headline-calc { display: block; margin-top: 6px; font-size: 14.5px; line-height: 1.5; color: var(--muted); max-width: 60ch; }
-    .headline-calc .fig { color: var(--ink); font-size: 13.5px; }
     .ledger { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 26px; max-width: 700px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
     .ledger > div { padding: 16px 18px 16px 0; }
     .ledger > div + div { padding-left: 18px; border-left: 1px solid var(--line); }
@@ -81,6 +79,22 @@
     .ledger-n.money { color: var(--money); }
     .ledger-n .vs { font-size: 17px; font-weight: 500; color: var(--muted); white-space: nowrap; }
     .ledger-l { display: block; margin-top: 6px; font-size: 14px; line-height: 1.45; color: var(--muted); }
+    /* The 100 MW figure is a projection: dashed edge, no money colour */
+    .proj { margin-top: 18px; max-width: 700px; padding: 14px 16px; border: 1px dashed var(--muted); border-radius: 2px; font-size: 14.5px; line-height: 1.55; color: var(--muted); }
+    .proj strong { color: var(--ink); font-weight: 650; }
+    .proj .fig { color: var(--ink); font-size: 14px; white-space: nowrap; }
+
+    .sens { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; margin-top: 26px; }
+    .sens h3 { font-size: 17px; letter-spacing: -.01em; }
+    .sens-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .sens table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14.5px; }
+    .sens th { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); text-align: right; padding: 0 0 8px 10px; border-bottom: 1px solid var(--ink); vertical-align: bottom; }
+    .sens td { text-align: right; padding: 9px 0 9px 10px; border-bottom: 1px solid var(--line); font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 14px; }
+    .sens th:first-child, .sens td:first-child { text-align: left; padding-left: 0; }
+    .sens td.edge { color: var(--money); font-weight: 600; }
+    .sens tr.base td { background: var(--surface); }
+    .sens tr.base td:first-child::after { content: attr(data-base); font-family: "Hanken Grotesk", system-ui, sans-serif; font-size: 12px; color: var(--muted); margin-left: 8px; }
+    @media (max-width: 760px) { .sens { grid-template-columns: 1fr; gap: 28px; } }
 
     .cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 30px; }
     .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 18px; border-radius: 4px; font-weight: 600; font-size: 15px; text-decoration: none; border: 1px solid var(--ink); transition: background-color .2s cubic-bezier(.2,.8,.2,1), color .2s cubic-bezier(.2,.8,.2,1); }
@@ -197,17 +211,17 @@
   <header>
     <div class="wrap">
       <h1>Battery Dispatch</h1>
-      <p class="claim" data-i18n="claim">A battery makes money by buying electricity when it is cheap and selling it when it is expensive. I built a model that decides when to do which.</p>
+      <p class="claim" data-i18n="claim">A grid battery earns money by charging when power is cheap and selling when it is expensive. I built a dispatch optimiser that plans those trades each day on the German day-ahead market, with a machine-learning price forecast as its input.</p>
       <div class="headline">
-        <span class="headline-n fig" data-eur="380000">€380,000</span>
-        <span class="headline-l" data-i18n="hl.l">extra earnings my model would add over a simple rule of thumb on a 100&nbsp;MW battery portfolio, February to December 2025</span>
-        <span class="headline-calc"><span data-i18n="hl.calc">Illustration, scaled from one battery:</span> <span class="fig"><span data-eur="3800">€3,800</span>&nbsp;×&nbsp;100&nbsp;MW</span><span data-i18n="hl.calc2">, assuming the larger fleet does not move prices.</span></span>
+        <span class="headline-n fig" data-eur="68084">€68,084</span>
+        <span class="headline-l" data-i18n="sim.l">earned in a backtest by one simulated 1&nbsp;MW / 2&nbsp;MWh battery, trading on real German day-ahead prices from February to December 2025</span>
       </div>
       <div class="ledger">
-        <div><span class="ledger-n fig money" data-eur="68084">€68,084</span><span class="ledger-l" data-i18n="lg1">earned by one 1&nbsp;MW battery run by my model, on real German prices</span></div>
         <div><span class="ledger-n fig" data-i18n="pct">91% <span class="vs">vs 86%</span></span><span class="ledger-l" data-i18n="lg2">of the optimum captured, against the simple rule: a 35% smaller gap</span></div>
-        <div><span class="ledger-n fig">+<span data-eur="3800">€3,800</span></span><span class="ledger-l" data-i18n="lg3">more than the simple rule, for that one battery</span></div>
+        <div><span class="ledger-n fig money">+<span data-eur="3800">€3,800</span></span><span class="ledger-l" data-i18n="lg3">more than the simple rule. Between €3,400 and €3,900 at every wear cost and fee tested</span></div>
+        <div><span class="ledger-n fig" data-i18n="lg4n">10 of 11</span><span class="ledger-l" data-i18n="lg4">months ahead of the simple rule; level in December</span></div>
       </div>
+      <p class="proj" data-i18n="proj"><strong>Projection, not a result.</strong> Scaled to a 100&nbsp;MW portfolio, the same edge would be about <span class="fig">€380,000</span> over those 11 months (<span class="fig">€3,800&nbsp;×&nbsp;100</span>). That assumes every MW performs like the simulated one and that a larger fleet does not move prices. It has not been tested.</p>
       <div class="cta">
         <a class="btn primary" href="#results" data-i18n="btn.results">See the results</a>
         <a class="btn" href="battery_dispatch.zip" download data-i18n="btn.code">Download the code <small>.zip</small></a>
@@ -264,8 +278,45 @@
 
   <section>
     <div class="wrap">
+      <figure>
+        <figcaption>
+          <h2 data-i18n="m.title">Month by month</h2>
+          <div class="legend">
+            <span><i style="background:var(--ceiling);box-shadow:inset 0 0 0 1px var(--ceiling-edge)"></i><span data-i18n="lg.perfect">Perfect hindsight</span></span>
+            <span><i style="background:var(--money)"></i><span data-i18n="lg.ml">My model</span></span>
+            <span><i style="background:var(--base)"></i><span data-i18n="lg.naive">Simple rule</span></span>
+          </div>
+        </figcaption>
+        <div class="chart" id="monthChart" role="img" data-i18n-aria="m.aria" aria-label="Monthly earnings of a 1 MW battery, February to December 2025, for perfect hindsight, my model and the simple rule. My model is ahead of the simple rule in every month except December, where they are level."></div>
+        <p class="note" data-i18n="m.note">My model earned more than the simple rule in 10 of 11 months; in December the two were level. Earnings follow the daily price spread: highest from March to September, when solar pushes midday prices down, and lowest in November and December.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2 data-i18n="s.title">How sensitive is it to costs?</h2>
+      <p class="body" data-i18n="s.p">Two cost assumptions drive the result: battery wear (the base case charges €10 per MWh discharged) and trading fees (none in the base case). Higher costs cut profit and make the optimiser cycle less, but <strong>the edge over the simple rule stays between €3,400 and €3,900 in every setting.</strong></p>
+      <div class="sens">
+        <div>
+          <h3 data-i18n="s.wear.h">Battery wear cost</h3>
+          <p class="sens-sub" data-i18n="s.wear.sub">€ per MWh discharged, no trading fee</p>
+          <table id="sensWear"></table>
+        </div>
+        <div>
+          <h3 data-i18n="s.fee.h">Trading fee</h3>
+          <p class="sens-sub" data-i18n="s.fee.sub">€ per MWh bought or sold, wear cost €10</p>
+          <table id="sensFee"></table>
+        </div>
+      </div>
+      <p class="note" data-i18n="s.note">Feb–Dec 2025, one 1&nbsp;MW / 2&nbsp;MWh battery. Each row re-runs the full backtest: the optimiser plans with those costs and is paid net of them. Each extra €1 of wear per MWh costs about €960 of profit. Wear is a flat cost per MWh, not a physical ageing model.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
       <h2 data-i18n="how.title">How it works</h2>
-      <p class="body" data-i18n="how.p">For the technical reader. Each day is tested using only data that was available before that day's auction.</p>
+      <p class="body" data-i18n="how.p">For the technical reader. The optimiser is the core; the forecast is the input it plans on. Each day is tested using only data that was available before that day's auction.</p>
       <ol class="steps">
         <li><div><h3 data-i18n="h1">Forecast</h3><p data-i18n="p1">A machine-learning model (gradient boosting) predicts tomorrow's 24 hourly prices from recent prices and the calendar. It learns from 2023 onward and is retrained every month on past data only.</p></div></li>
         <li><div><h3 data-i18n="h2">Plan</h3><p data-i18n="p2">An optimiser (a <span class="term">MILP</span>, which finds the best schedule within hard limits) decides when to charge and sell, respecting the battery's power, storage, energy losses and wear.</p></div></li>
@@ -316,11 +367,20 @@
   // ── Model output for 1 June 2025 (from export_web_v2.py → output/web_day_v2.json) ──
   const DAY = {"price": [92.53, 85.22, 77.13, 74.09, 72.66, 66.11, 35.84, 13.0, 2.4, -0.01, -0.6, -2.11, -5.48, -12.93, -20.41, -15.61, -6.0, -0.99, 19.23, 78.85, 93.66, 106.86, 105.93, 90.49], "forecast": [86.81, 89.5, 84.24, 76.18, 76.14, 70.24, 70.0, 57.38, 23.13, -2.12, -17.07, -23.66, -27.97, -49.03, -39.69, -25.71, -20.66, 17.14, 67.92, 117.52, 134.99, 137.92, 117.21, 100.91], "net": [0.0, -0.0, -0.0, -0.0, 0.0, -0.0, -0.0, -0.0, -0.0, 0.0, -0.0, 0.0, -0.105, -1.0, -1.0, 0.0, 0.0, -0.0, -0.0, 0.0, 0.9, 1.0, 0.0, 0.0]};
 
+  // ── Monthly results and cost sensitivity (from sensitivity.py → output/sensitivity.json) ──
+  const MONTHLY = [[2,4277,3402,3122],[3,8123,7508,7052],[4,8698,8140,8040],[5,9049,8520,7983],[6,8884,8266,7624],
+    [7,5601,5152,4925],[8,7500,7262,6772],[9,10080,9602,9238],[10,6560,5758,5327],[11,3993,3152,2877],[12,2361,1322,1323]];
+  // [cost, my model, simple rule, cycles per day]
+  const SENS = {
+    wear: [[0,78503,75105,1.83],[5,73326,69470,1.72],[10,68084,64284,1.64],[20,58144,54321,1.44],[30,49631,45982,1.27]],
+    fee:  [[0,68084,64284,1.64],[0.5,66914,63221,1.62],[1,65872,62212,1.61],[2,63633,60013,1.57],[5,57620,53940,1.44]],
+  };
+
   // English lives in the HTML above; NO and DE override it.
   const I18N = {
     no: {
-      'meta.desc': "Et batteri planlagt med ML-prisprognose og en MILP tjente 68&nbsp;084&nbsp;€ per MW i det tyske day-ahead-markedet fra februar til desember 2025, 3&nbsp;800&nbsp;€ mer enn en enkel regel.",
-      'claim': "Et batteri tjener penger ved å kjøpe strøm når den er billig og selge den når den er dyr. Jeg har laget en modell som bestemmer når det skal gjøre hva.",
+      'meta.desc': "Dispatch-optimering for et batteri på 1&nbsp;MW / 2&nbsp;MWh i det tyske day-ahead-markedet. I en backtest for februar–desember 2025 tjente en MILP-plan basert på en prisprognose 68&nbsp;084&nbsp;€, 3&nbsp;800&nbsp;€ mer enn en enkel regel.",
+      'claim': "Et batteri i strømnettet tjener penger ved å lade når strømmen er billig og selge når den er dyr. Jeg har laget en dispatch-optimering som planlegger disse handlene hver dag i det tyske day-ahead-markedet, med en prisprognose fra maskinlæring som input.",
       'result': "Testet på ekte tyske strømpriser tjente et batteri på 1&nbsp;MW styrt av modellen min <strong>68&nbsp;084&nbsp;€</strong> fra februar til desember 2025, 91&nbsp;% av det mest det kunne ha tjent.",
       'stat1': "mer enn en enkel tommelfingerregel, for ett batteri på 1&nbsp;MW over 11 måneder i 2025",
       'stat2': "den samme fordelen på en portefølje på 100&nbsp;MW <span class=\"scale-tag\">Illustrasjon</span>",
@@ -335,7 +395,7 @@
       'c1.note': "Midt på dagen presset solkraft prisene under null, så batteriet fikk betalt for å lade. Om kvelden solgte det for over 100&nbsp;€ per MWh. Det tjente 206&nbsp;€ den dagen; med de ekte prisene kjent på forhånd kunne det tjent 221&nbsp;€. Prognosen bommet på de nøyaktige tallene, men traff formen på dagen, og det er det planen trenger.",
       'res.title': 'Resultater',
       'res.p1': "Hva et batteri på 1&nbsp;MW tjente over 11 måneder med hver måte å planlegge på. <strong>Perfekt etterpåklokskap</strong> kjenner de ekte prisene på forhånd: det mest mulige, som ingen kan nå. Den <strong>enkle regelen</strong> antar at morgendagens priser blir som i dag. <strong>Modellen min slår den enkle regelen med 3&nbsp;800&nbsp;€.</strong>",
-      'how.p': "For den tekniske leseren. Hver dag testes kun med data som fantes før den dagens auksjon.",
+      'how.p': "For den tekniske leseren. Optimeringen er kjernen; prognosen er det den planlegger ut fra. Hver dag testes kun med data som fantes før den dagens auksjon.",
       'res.aria': 'Inntekt per MW etter strategi',
       't.strategy': 'Strategi', 't.feb': 'Feb–des 2025',
       'lg.perfect': 'Perfekt etterpåklokskap', 'lg.ml': 'Min modell', 'lg.naive': 'Enkel regel',
@@ -362,20 +422,29 @@
       'lg.first': "Første versjon (kun data fra 2025)",
       'in.no.0': "Kommersielle vind- og solprognoser som finnes før auksjonen",
       'nav.contact': 'Kontakt',
-      'hl.l': "ekstra inntekt modellen min ville gitt sammenlignet med en enkel tommelfingerregel, på en batteriportefølje på 100&nbsp;MW, februar til desember 2025",
-      'hl.calc': 'Illustrasjon, skalert opp fra ett batteri:',
-      'hl.calc2': ', forutsatt at den større batteriflåten ikke flytter prisene.',
-      'lg1': 'tjent av ett batteri på 1&nbsp;MW styrt av modellen min, på ekte tyske priser',
+      'sim.l': "tjent i en backtest av ett simulert batteri på 1&nbsp;MW / 2&nbsp;MWh, som handlet på ekte tyske day-ahead-priser fra februar til desember 2025",
       'lg2': 'av optimum oppnådd, mot den enkle regelen: 35&nbsp;% mindre avstand',
-      'lg3': 'mer enn den enkle regelen, for det ene batteriet',
+      'lg3': 'mer enn den enkle regelen. Mellom 3&nbsp;400 og 3&nbsp;900&nbsp;€ for alle slitasjekostnader og gebyrer som er testet',
+      'lg4n': '10 av 11',
+      'lg4': 'måneder foran den enkle regelen; likt i desember',
+      'proj': "<strong>En framskrivning, ikke et resultat.</strong> Skalert opp til en portefølje på 100&nbsp;MW ville den samme fordelen vært rundt <span class=\"fig\">380&nbsp;000&nbsp;€</span> over de 11 månedene (<span class=\"fig\">3&nbsp;800&nbsp;€&nbsp;×&nbsp;100</span>). Det forutsetter at hver MW gjør det like bra som den simulerte, og at en større flåte ikke flytter prisene. Det er ikke testet.",
+      'm.title': 'Måned for måned',
+      'm.aria': 'Månedlig inntekt for et batteri på 1 MW, februar til desember 2025, med perfekt etterpåklokskap, min modell og den enkle regelen. Modellen min ligger foran den enkle regelen hver måned unntatt desember, der de er like.',
+      'm.note': "Modellen min tjente mer enn den enkle regelen i 10 av 11 måneder; i desember var de like. Inntekten følger prisforskjellen gjennom dagen: høyest fra mars til september, når solkraft presser middagsprisene ned, og lavest i november og desember.",
+      's.title': 'Hvor følsomt er det for kostnader?',
+      's.p': "To kostnadsantakelser driver resultatet: slitasje på batteriet (basistilfellet regner 10&nbsp;€ per MWh utladet) og handelsgebyrer (ingen i basistilfellet). Høyere kostnader gir lavere fortjeneste og færre sykluser, men <strong>fordelen over den enkle regelen holder seg mellom 3&nbsp;400 og 3&nbsp;900&nbsp;€ i alle tilfeller.</strong>",
+      's.wear.h': 'Slitasjekostnad', 's.wear.sub': '€ per MWh utladet, uten handelsgebyr',
+      's.fee.h': 'Handelsgebyr', 's.fee.sub': '€ per MWh kjøpt eller solgt, slitasje 10&nbsp;€',
+      's.note': "Feb–des 2025, ett batteri på 1&nbsp;MW / 2&nbsp;MWh. Hver rad kjører hele backtesten på nytt: optimeringen planlegger med disse kostnadene og får betalt fratrukket dem. Hver ekstra euro slitasje per MWh koster rundt 960&nbsp;€ i fortjeneste. Slitasje er en fast kostnad per MWh, ikke en fysisk aldringsmodell.",
+      's.col.cost': 'Kostnad', 's.col.model': 'Min modell', 's.col.edge': 'mot enkel regel', 's.col.cyc': 'Sykluser/dag', 's.base': 'basis',
       'pct': '91&nbsp;% <span class="vs">mot 86&nbsp;%</span>',
       'lg.neg': 'Pris under null',
       'c1.src': 'Priser: Bundesnetzagentur | SMARD.de (CC BY 4.0)',
       'scale': "<span class=\"scale-tag\">Illustrasjon</span> I porteføljeskala blir det betydelig: på 100&nbsp;MW batterier (en eksempelstørrelse, ikke et ekte anlegg) ville den samme fordelen vært verdt rundt <strong>380&nbsp;000&nbsp;€</strong> i de samme 11 månedene.",
     },
     de: {
-      'meta.desc': "Ein Batteriespeicher, gesteuert mit ML-Preisprognose und MILP-Optimierung, erzielte von Februar bis Dezember 2025 am deutschen Day-Ahead-Markt 68.084&nbsp;€ pro MW, 3.800&nbsp;€ mehr als mit einer einfachen Faustregel.",
-      'claim': "Ein Batteriespeicher verdient Geld, indem er Strom kauft, wenn er billig ist, und verkauft, wenn er teuer ist. Ich habe ein Modell gebaut, das entscheidet, wann was passiert.",
+      'meta.desc': "Einsatzoptimierung für einen Batteriespeicher mit 1&nbsp;MW / 2&nbsp;MWh am deutschen Day-Ahead-Markt. Im Backtest Februar bis Dezember 2025 erzielte ein MILP-Fahrplan auf Basis einer Preisprognose 68.084&nbsp;€, 3.800&nbsp;€ mehr als eine einfache Faustregel.",
+      'claim': "Ein Netzspeicher verdient Geld, indem er lädt, wenn Strom billig ist, und verkauft, wenn er teuer ist. Ich habe eine Einsatzoptimierung gebaut, die diese Geschäfte jeden Tag am deutschen Day-Ahead-Markt plant, mit einer Preisprognose aus maschinellem Lernen als Input.",
       'result': "Getestet mit echten deutschen Strompreisen hat ein 1-MW-Speicher, gesteuert von meinem Modell, von Februar bis Dezember 2025 <strong>68.084&nbsp;€</strong> erwirtschaftet, 91&nbsp;% des höchstmöglichen Ertrags.",
       'stat1': "mehr als mit einer einfachen Faustregel, für einen 1-MW-Speicher in 11 Monaten 2025",
       'stat2': "derselbe Vorsprung bei einem Portfolio von 100&nbsp;MW <span class=\"scale-tag\">Zur Veranschaulichung</span>",
@@ -390,7 +459,7 @@
       'c1.note': "Mittags drückte Solarstrom die Preise unter null, der Speicher wurde also fürs Laden bezahlt. Abends verkaufte er für über 100&nbsp;€ pro MWh. An diesem Tag brachte das 206&nbsp;€; mit vorab bekannten echten Preisen wären 221&nbsp;€ möglich gewesen. Die Prognose lag bei den genauen Werten daneben, hat den Tagesverlauf aber richtig erkannt, und genau darauf kommt es beim Plan an.",
       'res.title': 'Ergebnisse',
       'res.p1': "Was ein 1-MW-Speicher in 11 Monaten mit der jeweiligen Planung verdient hat. <strong>Perfekte Voraussicht</strong> kennt die echten Preise vorab: das Maximum, das niemand erreichen kann. Die <strong>einfache Faustregel</strong> nimmt an, dass morgen die Preise von heute gelten. <strong>Mein Modell schlägt die Faustregel um 3.800&nbsp;€.</strong>",
-      'how.p': "Für technisch Interessierte. Jeder Tag wird nur mit Daten getestet, die vor der jeweiligen Auktion vorlagen.",
+      'how.p': "Für technisch Interessierte. Der Kern ist die Optimierung; die Prognose ist die Grundlage, auf der sie plant. Jeder Tag wird nur mit Daten getestet, die vor der jeweiligen Auktion vorlagen.",
       'res.aria': 'Erlöse pro MW nach Strategie',
       't.strategy': 'Strategie', 't.feb': 'Feb.–Dez. 2025',
       'lg.perfect': 'Perfekte Voraussicht', 'lg.ml': 'Mein Modell', 'lg.naive': 'Einfache Faustregel',
@@ -417,12 +486,21 @@
       'lg.first': "Erste Version (nur Daten von 2025)",
       'in.no.0': "Kommerzielle Wind- und Solarprognosen, die schon vor der Auktion vorliegen",
       'nav.contact': 'Kontakt',
-      'hl.l': "zusätzlicher Ertrag, den mein Modell gegenüber einer einfachen Faustregel bei einem Speicherportfolio von 100&nbsp;MW erzielen würde, Februar bis Dezember 2025",
-      'hl.calc': 'Zur Veranschaulichung, hochgerechnet von einem Speicher:',
-      'hl.calc2': ', unter der Annahme, dass der größere Speicherpark die Preise nicht verschiebt.',
-      'lg1': 'erwirtschaftet von einem 1-MW-Speicher, gesteuert von meinem Modell, mit echten deutschen Preisen',
+      'sim.l': "im Backtest erwirtschaftet von einem simulierten Speicher mit 1&nbsp;MW / 2&nbsp;MWh, gehandelt zu echten deutschen Day-Ahead-Preisen von Februar bis Dezember 2025",
       'lg2': 'des Optimums erreicht, im Vergleich zur Faustregel: 35&nbsp;% weniger Abstand',
-      'lg3': 'mehr als mit der einfachen Faustregel, für diesen einen Speicher',
+      'lg3': 'mehr als mit der Faustregel. Zwischen 3.400 und 3.900&nbsp;€ bei allen getesteten Verschleißkosten und Gebühren',
+      'lg4n': '10 von 11',
+      'lg4': 'Monaten vor der Faustregel; im Dezember gleichauf',
+      'proj': "<strong>Eine Hochrechnung, kein Ergebnis.</strong> Auf ein Portfolio von 100&nbsp;MW hochgerechnet, entspräche derselbe Vorsprung rund <span class=\"fig\">380.000&nbsp;€</span> in diesen 11 Monaten (<span class=\"fig\">3.800&nbsp;€&nbsp;×&nbsp;100</span>). Das setzt voraus, dass jedes MW so abschneidet wie das simulierte und ein größerer Speicherpark die Preise nicht verschiebt. Getestet ist das nicht.",
+      'm.title': 'Monat für Monat',
+      'm.aria': 'Monatliche Erlöse eines 1-MW-Speichers von Februar bis Dezember 2025 mit perfekter Voraussicht, meinem Modell und der Faustregel. Mein Modell liegt in jedem Monat außer Dezember vor der Faustregel; im Dezember sind beide gleichauf.',
+      'm.note': "Mein Modell erzielte in 10 von 11 Monaten mehr als die Faustregel; im Dezember lagen beide gleichauf. Die Erlöse folgen der täglichen Preisspanne: am höchsten von März bis September, wenn Solarstrom die Mittagspreise drückt, am niedrigsten im November und Dezember.",
+      's.title': 'Wie empfindlich ist das Ergebnis gegenüber Kosten?',
+      's.p': "Zwei Kostenannahmen bestimmen das Ergebnis: der Verschleiß des Speichers (im Basisfall 10&nbsp;€ pro entladener MWh) und Handelsgebühren (im Basisfall keine). Höhere Kosten senken den Gewinn und lassen die Optimierung seltener zyklieren, aber <strong>der Vorsprung vor der Faustregel bleibt in jedem Fall zwischen 3.400 und 3.900&nbsp;€.</strong>",
+      's.wear.h': 'Verschleißkosten', 's.wear.sub': '€ pro entladener MWh, ohne Handelsgebühr',
+      's.fee.h': 'Handelsgebühr', 's.fee.sub': '€ pro gekaufter oder verkaufter MWh, Verschleiß 10&nbsp;€',
+      's.note': "Feb.–Dez. 2025, ein Speicher mit 1&nbsp;MW / 2&nbsp;MWh. Jede Zeile rechnet den gesamten Backtest neu: Die Optimierung plant mit diesen Kosten und wird abzüglich dieser Kosten vergütet. Jeder zusätzliche Euro Verschleiß pro MWh kostet rund 960&nbsp;€ Gewinn. Verschleiß ist hier ein fester Betrag pro MWh, kein physikalisches Alterungsmodell.",
+      's.col.cost': 'Kosten', 's.col.model': 'Mein Modell', 's.col.edge': 'vs. Faustregel', 's.col.cyc': 'Zyklen/Tag', 's.base': 'Basisfall',
       'pct': '91&nbsp;% <span class="vs">vs. 86&nbsp;%</span>',
       'lg.neg': 'Preis unter null',
       'c1.src': 'Preise: Bundesnetzagentur | SMARD.de (CC BY 4.0)',
@@ -431,7 +509,8 @@
   };
 
   const meta = document.querySelector('meta[name="description"]');
-  I18N.en = { 'meta.desc': meta.content, 'ax.sell': 'Sell', 'ax.charge': 'Charge' };
+  I18N.en = { 'meta.desc': meta.content, 'ax.sell': 'Sell', 'ax.charge': 'Charge',
+    's.col.cost': 'Cost', 's.col.model': 'My model', 's.col.edge': 'vs simple rule', 's.col.cyc': 'Cycles/day', 's.base': 'base case' };
   document.querySelectorAll('[data-i18n]').forEach(el => { I18N.en[el.dataset.i18n] ??= el.innerHTML; });
   document.querySelectorAll('[data-i18n-aria]').forEach(el => { I18N.en[el.dataset.i18nAria] ??= el.getAttribute('aria-label'); });
 
@@ -464,7 +543,45 @@
     meta.content = t('meta.desc');
     document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
     if (save) { try { localStorage.setItem('lang', l); } catch (e) {} }
-    drawDay();
+    drawAll();
+  }
+  function drawAll() { drawDay(); drawMonths(); renderSens(); }
+
+  function renderSens() {
+    const num = (v, d) => new Intl.NumberFormat(LOCALE[lang], { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+    for (const [id, rows, base] of [['sensWear', SENS.wear, 10], ['sensFee', SENS.fee, 0]]) {
+      const tbl = document.getElementById(id);
+      tbl.innerHTML = `<thead><tr><th scope="col">${t('s.col.cost')}</th><th scope="col">${t('s.col.model')}</th><th scope="col">${t('s.col.edge')}</th><th scope="col">${t('s.col.cyc')}</th></tr></thead><tbody>` +
+        rows.map(([c, m, n, cyc]) => {
+          const isBase = c === base;
+          return `<tr${isBase ? ' class="base"' : ''}><td${isBase ? ` data-base="${t('s.base')}"` : ''}>€${num(c, c % 1 ? 1 : 0)}</td><td>${euro(m)}</td><td class="edge">+${euro(m - n)}</td><td>${num(cyc, 2)}</td></tr>`;
+        }).join('') + '</tbody>';
+    }
+  }
+
+  const monthBox = document.getElementById('monthChart');
+  function drawMonths() {
+    const W = Math.max(300, Math.round(monthBox.clientWidth || 720)), narrow = W < 500;
+    const L = 70, R = 8, T = 22, PH = narrow ? 170 : 200, H = T + PH + 24;
+    monthBox.innerHTML = '';
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, 'aria-hidden': 'true' }, monthBox);
+    const line = css('--line'), muted = css('--muted');
+    const top = 11000, y = v => T + (top - v) / top * PH;
+    const compact = v => new Intl.NumberFormat(LOCALE[lang], { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 0 }).format(v);
+    for (const v of [0, 5000, 10000]) {
+      el('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: v === 0 ? muted : line }, svg);
+      el('text', { x: L - 10, y: y(v) + 4, 'text-anchor': 'end' }, svg, compact(v));
+    }
+    const n = MONTHLY.length, gw = (W - L - R) / n, bw = Math.min(14, gw * 0.24), gap = 1.5;
+    const fmt = new Intl.DateTimeFormat(LOCALE[lang], { month: narrow ? 'narrow' : 'short' });
+    MONTHLY.forEach(([m, perfect, model, naive], i) => {
+      const cx = L + (i + 0.5) * gw;
+      [[perfect, css('--ceiling'), css('--ceiling-edge')], [model, css('--money')], [naive, css('--base')]].forEach(([v, fill, stroke], k) => {
+        const x = cx + (k - 1) * (bw + gap) - bw / 2;
+        el('rect', { x, y: y(v), width: bw, height: y(0) - y(v), fill, ...(stroke ? { stroke, 'stroke-width': 1 } : {}) }, svg);
+      });
+      el('text', { x: cx, y: H - 4, 'text-anchor': 'middle' }, svg, fmt.format(new Date(2025, m - 1, 15)).replace('.', ''));
+    });
   }
 
   // ── Chart: plain SVG drawn at the box's real width, colours from the theme tokens ──
@@ -520,9 +637,9 @@
   }
 
   document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang, true)));
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawDay);
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawAll);
   let lastW = 0;
-  new ResizeObserver(() => { const w = boxWidth(); if (w !== lastW) { lastW = w; drawDay(); } }).observe(chartBox);
+  new ResizeObserver(() => { const w = boxWidth(); if (w !== lastW) { lastW = w; drawDay(); drawMonths(); } }).observe(chartBox);
   setLang(pickInitialLang(), false);
 </script>
 </body>

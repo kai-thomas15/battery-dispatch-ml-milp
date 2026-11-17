@@ -1,0 +1,144 @@
+{
+  "wear": [
+    {
+      "value": 0,
+      "perfect": 85861,
+      "naive": 75105,
+      "model": 78503,
+      "cycles_per_day": 1.83
+    },
+    {
+      "value": 5,
+      "perfect": 80354,
+      "naive": 69470,
+      "model": 73326,
+      "cycles_per_day": 1.72
+    },
+    {
+      "value": 10,
+      "perfect": 75126,
+      "naive": 64284,
+      "model": 68084,
+      "cycles_per_day": 1.64
+    },
+    {
+      "value": 20,
+      "perfect": 65469,
+      "naive": 54321,
+      "model": 58144,
+      "cycles_per_day": 1.44
+    },
+    {
+      "value": 30,
+      "perfect": 56982,
+      "naive": 45982,
+      "model": 49631,
+      "cycles_per_day": 1.27
+    }
+  ],
+  "fee": [
+    {
+      "value": 0,
+      "perfect": 75126,
+      "naive": 64284,
+      "model": 68084,
+      "cycles_per_day": 1.64
+    },
+    {
+      "value": 0.5,
+      "perfect": 74057,
+      "naive": 63221,
+      "model": 66914,
+      "cycles_per_day": 1.62
+    },
+    {
+      "value": 1,
+      "perfect": 72998,
+      "naive": 62212,
+      "model": 65872,
+      "cycles_per_day": 1.61
+    },
+    {
+      "value": 2,
+      "perfect": 70923,
+      "naive": 60013,
+      "model": 63633,
+      "cycles_per_day": 1.57
+    },
+    {
+      "value": 5,
+      "perfect": 64982,
+      "naive": 53940,
+      "model": 57620,
+      "cycles_per_day": 1.44
+    }
+  ],
+  "monthly": [
+    {
+      "month": "2025-02",
+      "perfect": 4277,
+      "naive": 3122,
+      "model": 3402
+    },
+    {
+      "month": "2025-03",
+      "perfect": 8123,
+      "naive": 7052,
+      "model": 7508
+    },
+    {
+      "month": "2025-04",
+      "perfect": 8698,
+      "naive": 8040,
+      "model": 8140
+    },
+    {
+      "month": "2025-05",
+      "perfect": 9049,
+      "naive": 7983,
+      "model": 8520
+    },
+    {
+      "month": "2025-06",
+      "perfect": 8884,
+      "naive": 7624,
+      "model": 8266
+    },
+    {
+      "month": "2025-07",
+      "perfect": 5601,
+      "naive": 4925,
+      "model": 5152
+    },
+    {
+      "month": "2025-08",
+      "perfect": 7500,
+      "naive": 6772,
+      "model": 7262
+    },
+    {
+      "month": "2025-09",
+      "perfect": 10080,
+      "naive": 9238,
+      "model": 9602
+    },
+    {
+      "month": "2025-10",
+      "perfect": 6560,
+      "naive": 5327,
+      "model": 5758
+    },
+    {
+      "month": "2025-11",
+      "perfect": 3993,
+      "naive": 2877,
+      "model": 3152
+    },
+    {
+      "month": "2025-12",
+      "perfect": 2361,
+      "naive": 1323,
+      "model": 1322
+    }
+  ]
+}

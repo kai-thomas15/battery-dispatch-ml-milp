@@ -83,3 +83,35 @@ forecast, consumption forecast; weather from the Open-Meteo Previous Runs API
 In the 573 negative-price hours of 2025, wind and solar covered 95% of demand
 (41% in other hours). Solar alone covered 63% (12% otherwise), and solar exceeded wind
 in 76% of those hours: the negative prices are mainly a midday solar effect.
+
+---
+
+# Cost sensitivity and monthly results (`sensitivity.py`)
+
+Model B re-run with different cost assumptions, one at a time (Feb–Dec 2025, per MW).
+Each setting re-plans with the new costs and is settled net of them.
+
+| Wear cost (EUR/MWh discharged) | Model B | Simple rule | Edge | Cycles/day |
+|---|---|---|---|---|
+| 0 | €78,503 | €75,105 | +€3,398 | 1.83 |
+| 5 | €73,326 | €69,470 | +€3,856 | 1.72 |
+| **10 (base)** | **€68,084** | **€64,284** | **+€3,800** | **1.64** |
+| 20 | €58,144 | €54,321 | +€3,823 | 1.44 |
+| 30 | €49,631 | €45,982 | +€3,649 | 1.27 |
+
+| Trading fee (EUR/MWh bought or sold, wear 10) | Model B | Simple rule | Edge | Cycles/day |
+|---|---|---|---|---|
+| **0 (base)** | **€68,084** | **€64,284** | **+€3,800** | **1.64** |
+| 0.5 | €66,914 | €63,221 | +€3,693 | 1.62 |
+| 1 | €65,872 | €62,212 | +€3,660 | 1.61 |
+| 2 | €63,633 | €60,013 | +€3,620 | 1.57 |
+| 5 | €57,620 | €53,940 | +€3,680 | 1.44 |
+
+- Profit falls by about €960 per extra €1/MWh of wear cost; the edge over the simple
+  rule stays between €3,400 and €3,900 in every setting.
+- Month by month, model B beats the simple rule in 10 of 11 months; December is level
+  (€1,322 vs €1,323). Monthly figures are in `output/sensitivity.json`.
+- The 100 MW figure on the website (€380,000) is a projection (€3,800 × 100), not a
+  backtest result: it assumes identical performance per MW and no market impact.
+
+Run: `python3 sensitivity.py` (about as long as `battery_dispatch_v2.py` times eight).
