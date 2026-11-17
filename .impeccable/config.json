@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "site/public/index.html"
+        ],
+        "createdAt": "2026-11-17T09:13:57.515Z",
+        "reason": "Claude decided: flagged divs are ruled ledger cells where a hairline sits above or beside flush text with 14-18px padding; intentional editorial rule, not a boxed container"
+      }
+    ]
+  }
+}

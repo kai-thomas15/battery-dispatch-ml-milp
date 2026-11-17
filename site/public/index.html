@@ -17,26 +17,27 @@
   <style>
     /* Colour roles (one job each):
        --money   fjord green: money earned. Sell bars, "my model", headline figures.
-       --charge  solar yellow: buying cheap midday power. Fill only, never text.
-       --charge-ink  readable dark yellow for the word "Charge".
+       --charge  light sage: buying cheap midday power. Fill only, never text.
+       --charge-ink  readable sage for the word "Charge".
+       All neutrals are cool and green-tinted; no warm beige or yellow.
        --base    neutral grey: the simple-rule baseline.
        --ceiling light grey: the hindsight limit nobody can reach. */
     :root {
-      --bg: #ffffff; --surface: #f3f3ef; --ink: #111418; --muted: #565c64; --line: #dedcd5;
-      --money: #4a6b5d; --money-soft: #e8efeb; --charge: #f2b705; --charge-ink: #7d5a00;
-      --neg: #fff4cf; --base: #8c8a82; --ceiling: #d3d1c9; --ceiling-edge: #8c8a82;
+      --bg: #ffffff; --surface: #f4f6f5; --ink: #141a18; --muted: #56605c; --line: #dfe5e2;
+      --money: #4a6b5d; --money-soft: #e8efeb; --charge: #a9c9b8; --charge-ink: #4f7364;
+      --neg: #edf3f0; --base: #8d979c; --ceiling: #d5e0da; --ceiling-edge: #7d958a;
     }
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="light"]) {
-        --bg: #0f1115; --surface: #171a20; --ink: #eceae4; --muted: #a0a5ad; --line: #2a2e36;
-        --money: #9cbfae; --money-soft: #1c2a24; --charge: #f2b705; --charge-ink: #f2c94c;
-        --neg: #2a2614; --base: #7a7c84; --ceiling: #353840; --ceiling-edge: #7a7c84;
+        --bg: #0f1312; --surface: #161c1a; --ink: #e9edeb; --muted: #9ca8a3; --line: #27302c;
+        --money: #9cbfae; --money-soft: #1c2a24; --charge: #4f7a66; --charge-ink: #8fb3a2;
+        --neg: #17211d; --base: #78838a; --ceiling: #2c3a34; --ceiling-edge: #6f877c;
       }
     }
     :root[data-theme="dark"] {
-      --bg: #0f1115; --surface: #171a20; --ink: #eceae4; --muted: #a0a5ad; --line: #2a2e36;
-      --money: #9cbfae; --money-soft: #1c2a24; --charge: #f2b705; --charge-ink: #f2c94c;
-      --neg: #2a2614; --base: #7a7c84; --ceiling: #353840; --ceiling-edge: #7a7c84;
+      --bg: #0f1312; --surface: #161c1a; --ink: #e9edeb; --muted: #9ca8a3; --line: #27302c;
+      --money: #9cbfae; --money-soft: #1c2a24; --charge: #4f7a66; --charge-ink: #8fb3a2;
+      --neg: #17211d; --base: #78838a; --ceiling: #2c3a34; --ceiling-edge: #6f877c;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; color-scheme: light dark; }
@@ -92,7 +93,7 @@
     .sens td { text-align: right; padding: 9px 0 9px 10px; border-bottom: 1px solid var(--line); font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 14px; }
     .sens th:first-child, .sens td:first-child { text-align: left; padding-left: 0; }
     .sens td.edge { color: var(--money); font-weight: 600; }
-    .sens tr.base td { background: var(--surface); }
+    .sens tr.base td { font-weight: 600; }
     .sens tr.base td:first-child::after { content: attr(data-base); font-family: "Hanken Grotesk", system-ui, sans-serif; font-size: 12px; color: var(--muted); margin-left: 8px; }
     @media (max-width: 760px) { .sens { grid-template-columns: 1fr; gap: 28px; } }
 
@@ -219,7 +220,7 @@
       <div class="ledger">
         <div><span class="ledger-n fig" data-i18n="pct">91% <span class="vs">vs 86%</span></span><span class="ledger-l" data-i18n="lg2">of the optimum captured, against the simple rule: a 35% smaller gap</span></div>
         <div><span class="ledger-n fig money">+<span data-eur="3800">€3,800</span></span><span class="ledger-l" data-i18n="lg3">more than the simple rule. Between €3,400 and €3,900 at every wear cost and fee tested</span></div>
-        <div><span class="ledger-n fig" data-i18n="lg4n">10 of 11</span><span class="ledger-l" data-i18n="lg4">months ahead of the simple rule; level in December</span></div>
+        <div><span class="ledger-n fig" data-i18n="lg4n">10 of 11</span><span class="ledger-l" data-i18n="lg4">months in which my model earned more than the simple rule. December was a tie.</span></div>
       </div>
       <p class="proj" data-i18n="proj"><strong>Projection, not a result.</strong> Scaled to a 100&nbsp;MW portfolio, the same edge would be about <span class="fig">€380,000</span> over those 11 months (<span class="fig">€3,800&nbsp;×&nbsp;100</span>). That assumes every MW performs like the simulated one and that a larger fleet does not move prices. It has not been tested.</p>
       <div class="cta">
@@ -426,7 +427,7 @@
       'lg2': 'av optimum oppnådd, mot den enkle regelen: 35&nbsp;% mindre avstand',
       'lg3': 'mer enn den enkle regelen. Mellom 3&nbsp;400 og 3&nbsp;900&nbsp;€ for alle slitasjekostnader og gebyrer som er testet',
       'lg4n': '10 av 11',
-      'lg4': 'måneder foran den enkle regelen; likt i desember',
+      'lg4': 'måneder der modellen min tjente mer enn den enkle regelen. I desember ble det likt.',
       'proj': "<strong>En framskrivning, ikke et resultat.</strong> Skalert opp til en portefølje på 100&nbsp;MW ville den samme fordelen vært rundt <span class=\"fig\">380&nbsp;000&nbsp;€</span> over de 11 månedene (<span class=\"fig\">3&nbsp;800&nbsp;€&nbsp;×&nbsp;100</span>). Det forutsetter at hver MW gjør det like bra som den simulerte, og at en større flåte ikke flytter prisene. Det er ikke testet.",
       'm.title': 'Måned for måned',
       'm.aria': 'Månedlig inntekt for et batteri på 1 MW, februar til desember 2025, med perfekt etterpåklokskap, min modell og den enkle regelen. Modellen min ligger foran den enkle regelen hver måned unntatt desember, der de er like.',
@@ -490,7 +491,7 @@
       'lg2': 'des Optimums erreicht, im Vergleich zur Faustregel: 35&nbsp;% weniger Abstand',
       'lg3': 'mehr als mit der Faustregel. Zwischen 3.400 und 3.900&nbsp;€ bei allen getesteten Verschleißkosten und Gebühren',
       'lg4n': '10 von 11',
-      'lg4': 'Monaten vor der Faustregel; im Dezember gleichauf',
+      'lg4': 'Monaten, in denen mein Modell mehr erzielte als die Faustregel. Im Dezember gleichauf.',
       'proj': "<strong>Eine Hochrechnung, kein Ergebnis.</strong> Auf ein Portfolio von 100&nbsp;MW hochgerechnet, entspräche derselbe Vorsprung rund <span class=\"fig\">380.000&nbsp;€</span> in diesen 11 Monaten (<span class=\"fig\">3.800&nbsp;€&nbsp;×&nbsp;100</span>). Das setzt voraus, dass jedes MW so abschneidet wie das simulierte und ein größerer Speicherpark die Preise nicht verschiebt. Getestet ist das nicht.",
       'm.title': 'Monat für Monat',
       'm.aria': 'Monatliche Erlöse eines 1-MW-Speichers von Februar bis Dezember 2025 mit perfekter Voraussicht, meinem Modell und der Faustregel. Mein Modell liegt in jedem Monat außer Dezember vor der Faustregel; im Dezember sind beide gleichauf.',
