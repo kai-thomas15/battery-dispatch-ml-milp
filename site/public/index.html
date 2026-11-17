@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Battery Dispatch · Kai Scott Thomas</title>
+  <meta name="description" content="A battery planned with an ML price forecast and a MILP earned €68,084 per MW on the German day-ahead market from February to December 2025, €3,800 more than a simple rule." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Battery Dispatch · Kai Scott Thomas" />
+  <meta property="og:description" content="ML price forecasts plus a MILP schedule for a battery on the German day-ahead market, backtested on 2025 prices with three years of history." />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/assets/icon-48.png" />
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;650;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* Colour roles (one job each):
+       --money   fjord green: money earned. Sell bars, "my model", headline figures.
+       --charge  solar yellow: buying cheap midday power. Fill only, never text.
+       --charge-ink  readable dark yellow for the word "Charge".
+       --base    neutral grey: the simple-rule baseline.
+       --ceiling light grey: the hindsight limit nobody can reach. */
+    :root {
+      --bg: #ffffff; --surface: #f3f3ef; --ink: #111418; --muted: #565c64; --line: #dedcd5;
+      --money: #4a6b5d; --money-soft: #e8efeb; --charge: #f2b705; --charge-ink: #7d5a00;
+      --neg: #fff4cf; --base: #8c8a82; --ceiling: #d3d1c9; --ceiling-edge: #8c8a82;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0f1115; --surface: #171a20; --ink: #eceae4; --muted: #a0a5ad; --line: #2a2e36;
+        --money: #9cbfae; --money-soft: #1c2a24; --charge: #f2b705; --charge-ink: #f2c94c;
+        --neg: #2a2614; --base: #7a7c84; --ceiling: #353840; --ceiling-edge: #7a7c84;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0f1115; --surface: #171a20; --ink: #eceae4; --muted: #a0a5ad; --line: #2a2e36;
+      --money: #9cbfae; --money-soft: #1c2a24; --charge: #f2b705; --charge-ink: #f2c94c;
+      --neg: #2a2614; --base: #7a7c84; --ceiling: #353840; --ceiling-edge: #7a7c84;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; color-scheme: light dark; }
+    :root[data-theme="light"] { color-scheme: light; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    body { background: var(--bg); color: var(--ink); font: 400 17px/1.65 "Hanken Grotesk", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    ::selection { background: var(--money); color: var(--bg); }
+    a { color: inherit; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+    :focus-visible { outline: 2px solid var(--money); outline-offset: 3px; border-radius: 2px; }
+    p, li { text-wrap: pretty; }
+    h1, h2, h3 { font-weight: 650; letter-spacing: -.03em; line-height: 1.1; text-wrap: balance; }
+    .fig { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+
+    nav { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+    nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 60px; }
+    .brand { font-weight: 700; font-size: 17px; letter-spacing: -.02em; white-space: nowrap; }
+    .brand span { color: var(--money); }
+    .nav-right { display: flex; align-items: center; gap: 14px; }
+    .nav-contact { font-weight: 600; font-size: 14px; text-decoration: none; padding: 10px 2px; border-bottom: 1px solid transparent; }
+    .nav-contact:hover { border-bottom-color: currentColor; }
+    .lang { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; }
+    .lang button { font-family: inherit; font-weight: 600; font-size: 12px; line-height: 1; letter-spacing: .04em; color: var(--muted); background: none; border: 0; min-width: 40px; min-height: 36px; padding: 0 8px; cursor: pointer; }
+    .lang button + button { border-left: 1px solid var(--line); }
+    .lang button:hover { color: var(--ink); }
+    .lang button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+
+    header { padding: 64px 0 48px; }
+    header h1 { font-size: clamp(40px, 6.5vw, 60px); }
+    .claim { font-size: clamp(20px, 2.5vw, 24px); line-height: 1.45; font-weight: 500; letter-spacing: -.012em; margin-top: 18px; max-width: 34em; }
+
+    /* Headline figure, then the per-MW ledger that proves it */
+    .headline { margin-top: 40px; padding-top: 22px; border-top: 2px solid var(--ink); max-width: 700px; }
+    .headline-n { display: block; font-size: clamp(44px, 8vw, 72px); font-weight: 600; line-height: 1; color: var(--money); }
+    .headline-l { display: block; margin-top: 10px; font-size: 18px; line-height: 1.45; font-weight: 500; max-width: 40em; }
+    .headline-calc { display: block; margin-top: 6px; font-size: 14.5px; line-height: 1.5; color: var(--muted); max-width: 60ch; }
+    .headline-calc .fig { color: var(--ink); font-size: 13.5px; }
+    .ledger { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 26px; max-width: 700px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .ledger > div { padding: 16px 18px 16px 0; }
+    .ledger > div + div { padding-left: 18px; border-left: 1px solid var(--line); }
+    .ledger-n { display: block; font-size: clamp(24px, 3.4vw, 30px); font-weight: 600; line-height: 1.1; color: var(--ink); }
+    .ledger-n.money { color: var(--money); }
+    .ledger-n .vs { font-size: 17px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+    .ledger-l { display: block; margin-top: 6px; font-size: 14px; line-height: 1.45; color: var(--muted); }
+
+    .cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 30px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 18px; border-radius: 4px; font-weight: 600; font-size: 15px; text-decoration: none; border: 1px solid var(--ink); transition: background-color .2s cubic-bezier(.2,.8,.2,1), color .2s cubic-bezier(.2,.8,.2,1); }
+    .btn:hover { background: var(--surface); }
+    .btn.primary { background: var(--money); color: #fff; border-color: var(--money); }
+    .btn.primary:hover { background: color-mix(in srgb, var(--money) 86%, var(--ink)); }
+    :root[data-theme="dark"] .btn.primary { color: #0f1115; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color: #0f1115; } }
+    .btn small { font-weight: 500; opacity: .7; }
+    @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+
+    figure { border-top: 2px solid var(--ink); padding: 18px 0 0; }
+    figcaption { display: flex; justify-content: space-between; align-items: baseline; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 14px; }
+    section figcaption h2 { font-size: 22px; letter-spacing: -.02em; margin: 0; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+    .legend > span { white-space: nowrap; }
+    .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 1px; vertical-align: -1px; margin-right: 6px; }
+    .legend i.line { height: 3px; vertical-align: 3px; width: 16px; background: var(--ink); }
+    .legend i.dash { height: 0; border-top: 2px dashed var(--muted); vertical-align: 3px; width: 16px; }
+    .legend i.neg { background: var(--neg); box-shadow: inset 0 0 0 1px var(--line); }
+    .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+    .chart text { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+    .chart text.axis-word { font-family: "Hanken Grotesk", system-ui, sans-serif; font-size: 12px; font-weight: 600; }
+    .note { color: var(--muted); font-size: 14.5px; margin-top: 12px; max-width: 64ch; }
+    .src { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+
+    section { padding: 64px 0 56px; border-top: 1px solid var(--line); }
+    section.first { border-top: 0; padding-top: 16px; }
+    section h2 { font-size: clamp(28px, 4vw, 36px); margin-bottom: 12px; }
+    .body { color: var(--muted); max-width: 64ch; }
+    .body strong { color: var(--ink); font-weight: 600; }
+
+    .compare { margin-top: 26px; }
+    .compare .row { display: grid; grid-template-columns: minmax(130px, 1.1fr) 2fr 104px; grid-template-areas: "name bar feb"; column-gap: 18px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .compare .row > :nth-child(1) { grid-area: name; }
+    .compare .barcell { grid-area: bar; }
+    .compare .num { grid-area: feb; text-align: right; font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 15px; }
+    .compare .head { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding-top: 0; border-bottom-color: var(--ink); }
+    .compare .head .num { font-family: inherit; font-size: 12px; }
+    .compare .row.ml { font-weight: 700; color: var(--money); }
+    .bar { display: block; height: 12px; border-radius: 1px; }
+    .bar.perfect { background: var(--ceiling); box-shadow: inset 0 0 0 1px var(--ceiling-edge); }
+    .bar.ml { background: var(--money); }
+    .bar.naive { background: var(--base); }
+    .bar.ref { background: transparent; box-shadow: inset 0 0 0 1.5px var(--money); }
+    .bar.first { background: transparent; box-shadow: inset 0 0 0 1px var(--base); }
+    .compare .row.first, .compare .row.ref, .compare .row.perfect { color: var(--muted); }
+
+    .steps { list-style: none; counter-reset: s; display: grid; border-top: 1px solid var(--line); margin-top: 22px; }
+    .steps li { counter-increment: s; display: grid; grid-template-columns: 44px 1fr; gap: 12px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+    .steps li::before { content: counter(s); color: var(--muted); font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 500; padding-top: 1px; }
+    .steps h3 { font-size: 19px; margin-bottom: 4px; letter-spacing: -.02em; }
+    .steps p { color: var(--muted); max-width: 64ch; }
+    .term { color: var(--ink); font-weight: 600; }
+
+    .idea { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 24px; }
+    .idea > div { border-top: 2px solid var(--ink); padding-top: 14px; }
+    .idea h3 { font-size: 18px; letter-spacing: -.02em; margin-bottom: 8px; }
+    .idea p { color: var(--muted); font-size: 15.5px; line-height: 1.55; }
+
+    .next { list-style: none; display: grid; gap: 10px; margin-top: 18px; }
+    .next li { color: var(--muted); padding-left: 20px; position: relative; max-width: 64ch; }
+    .next li::before { content: ""; position: absolute; left: 0; top: .62em; width: 8px; height: 8px; background: var(--ink); }
+    .inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 24px; }
+    .inputs h3 { font-size: 17px; letter-spacing: -.01em; }
+    .next.missing li::before { background: transparent; border: 1.5px solid var(--muted); }
+    .about { margin-top: 40px; padding-top: 28px; border-top: 2px solid var(--ink); display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .about p { color: var(--muted); max-width: 52ch; }
+    .about strong { color: var(--ink); }
+
+    footer { border-top: 1px solid var(--line); padding: 26px 0 40px; color: var(--muted); font-size: 13px; }
+    footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+    @media (max-width: 680px) {
+      header { padding: 40px 0 36px; }
+      .inputs { grid-template-columns: 1fr; gap: 20px; }
+      .idea { grid-template-columns: 1fr; gap: 22px; }
+      .compare .row { grid-template-columns: 1fr 96px; grid-template-areas: "name feb" "bar bar"; row-gap: 8px; }
+      .compare .head { grid-template-areas: "name feb"; }
+      .compare .head .barcell { display: none; }
+      .legend { display: grid; grid-template-columns: auto auto; justify-content: start; }
+    }
+    @media (max-width: 520px) {
+      .ledger { grid-template-columns: 1fr; }
+      .ledger > div { padding: 14px 0; }
+      .ledger > div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); }
+    }
+    @media (max-width: 480px) {
+      .wrap { padding: 0 16px; }
+      .brand { font-size: 16px; }
+      .nav-right { gap: 10px; }
+      .nav-contact { font-size: 13px; }
+      .lang button { min-width: 34px; padding: 0 4px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <span class="brand">Kai Scott Thomas<span>.</span></span>
+    <div class="nav-right">
+      <a class="nav-contact" href="https://www.linkedin.com/in/kai-scott-thomas" target="_blank" rel="noopener" data-i18n="nav.contact">Contact</a>
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="no" aria-pressed="false">NO</button>
+        <button type="button" data-lang="de" aria-pressed="false">DE</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <header>
+    <div class="wrap">
+      <h1>Battery Dispatch</h1>
+      <p class="claim" data-i18n="claim">A battery makes money by buying electricity when it is cheap and selling it when it is expensive. I built a model that decides when to do which.</p>
+      <div class="headline">
+        <span class="headline-n fig" data-eur="380000">€380,000</span>
+        <span class="headline-l" data-i18n="hl.l">extra earnings my model would add over a simple rule of thumb on a 100&nbsp;MW battery portfolio, February to December 2025</span>
+        <span class="headline-calc"><span data-i18n="hl.calc">Illustration, scaled from one battery:</span> <span class="fig"><span data-eur="3800">€3,800</span>&nbsp;×&nbsp;100&nbsp;MW</span><span data-i18n="hl.calc2">, assuming the larger fleet does not move prices.</span></span>
+      </div>
+      <div class="ledger">
+        <div><span class="ledger-n fig money" data-eur="68084">€68,084</span><span class="ledger-l" data-i18n="lg1">earned by one 1&nbsp;MW battery run by my model, on real German prices</span></div>
+        <div><span class="ledger-n fig" data-i18n="pct">91% <span class="vs">vs 86%</span></span><span class="ledger-l" data-i18n="lg2">of the optimum captured, against the simple rule: a 35% smaller gap</span></div>
+        <div><span class="ledger-n fig">+<span data-eur="3800">€3,800</span></span><span class="ledger-l" data-i18n="lg3">more than the simple rule, for that one battery</span></div>
+      </div>
+      <div class="cta">
+        <a class="btn primary" href="#results" data-i18n="btn.results">See the results</a>
+        <a class="btn" href="battery_dispatch.zip" download data-i18n="btn.code">Download the code <small>.zip</small></a>
+      </div>
+    </div>
+  </header>
+
+  <section class="first">
+    <div class="wrap">
+      <h2 data-i18n="idea.title">The idea in 30 seconds</h2>
+      <div class="idea">
+        <div><h3 data-i18n="i1h">Prices change every hour</h3><p data-i18n="i1p">On sunny days, solar panels flood the grid at midday and power gets cheap, sometimes below zero. In the evening the sun is gone, people are home and power gets expensive.</p></div>
+        <div><h3 data-i18n="i2h">The battery shifts energy in time</h3><p data-i18n="i2p">It charges when power is cheap and sells it back when it is expensive. The price difference, minus energy losses and wear, is the profit.</p></div>
+        <div><h3 data-i18n="i3h">The catch: the plan is made before the prices are known</h3><p data-i18n="i3p">By noon each day, the battery's plan for all of tomorrow must be handed in to the power exchange. Tomorrow's prices are only published afterwards. So the plan has to be based on a prediction, and the better the prediction, the more the battery earns.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <figure>
+        <figcaption>
+          <h2 data-i18n="c1.title">One real day: 1 June 2025</h2>
+          <div class="legend">
+            <span><i class="line"></i><span data-i18n="lg.actual">Real price</span></span>
+            <span><i class="dash"></i><span data-i18n="lg.forecast">My forecast</span></span>
+            <span><i style="background:var(--charge)"></i><span data-i18n="lg.charge">Buy and charge</span></span>
+            <span><i style="background:var(--money)"></i><span data-i18n="lg.discharge">Sell</span></span>
+            <span><i class="neg"></i><span data-i18n="lg.neg">Price below zero</span></span>
+          </div>
+        </figcaption>
+        <div class="chart" id="dayChart" role="img" data-i18n-aria="c1.aria" aria-label="Hourly power prices on 1 June 2025. The battery charges at midday when prices are negative and sells in the evening peak."></div>
+        <p class="note" data-i18n="c1.note">At midday, solar pushed prices below zero, so the battery was paid to charge. In the evening it sold at over €100 per MWh. It earned €206 that day; knowing the real prices in advance, it could have earned €221. The forecast missed the exact numbers but got the shape of the day right, and that is what the plan needs.</p>
+        <p class="src" data-i18n="c1.src">Prices: Bundesnetzagentur | SMARD.de (CC BY 4.0)</p>
+      </figure>
+    </div>
+  </section>
+
+  <section id="results">
+    <div class="wrap">
+      <h2 data-i18n="res.title">Results</h2>
+      <p class="body" data-i18n="res.p1">What a 1&nbsp;MW battery earned over 11 months with each way of planning. <strong>Perfect hindsight</strong> knows the real prices in advance: the most possible, which no one can reach. The <strong>simple rule</strong> assumes tomorrow's prices will repeat today's. <strong>My model beats the simple rule by €3,800.</strong></p>
+      <div class="compare" role="table" data-i18n-aria="res.aria" aria-label="Earnings per MW by strategy">
+        <div class="row head" role="row"><span role="columnheader" data-i18n="t.strategy">Strategy</span><span class="barcell" aria-hidden="true"></span><span class="num" role="columnheader" data-i18n="t.feb">Feb–Dec 2025</span></div>
+        <div class="row perfect" role="row"><span role="cell" data-i18n="lg.perfect">Perfect hindsight</span><span class="barcell" aria-hidden="true"><span class="bar perfect" style="width:100%"></span></span><span class="num" role="cell" data-eur="75126">€75,126</span></div>
+        <div class="row ref" role="row"><span role="cell" data-i18n="lg.withfc">With wind &amp; solar forecasts*</span><span class="barcell" aria-hidden="true"><span class="bar ref" style="width:94.6%"></span></span><span class="num" role="cell" data-eur="71040">€71,040</span></div>
+        <div class="row ml" role="row"><span role="cell" data-i18n="lg.ml">My model</span><span class="barcell" aria-hidden="true"><span class="bar ml" style="width:90.6%"></span></span><span class="num" role="cell" data-eur="68084">€68,084</span></div>
+        <div class="row naive" role="row"><span role="cell" data-i18n="lg.naive">Simple rule</span><span class="barcell" aria-hidden="true"><span class="bar naive" style="width:85.6%"></span></span><span class="num" role="cell" data-eur="64284">€64,284</span></div>
+        <div class="row first" role="row"><span role="cell" data-i18n="lg.first">First version (2025 data only)</span><span class="barcell" aria-hidden="true"><span class="bar first" style="width:83.7%"></span></span><span class="num" role="cell" data-eur="62848">€62,848</span></div>
+      </div>
+      <p class="note" data-i18n="res.note">1 MW / 2 MWh battery, day-ahead market only, before grid fees and taxes. Test period February–December 2025; January is the first month of 2025 the models learn from. *The grid operators publish these wind and solar forecasts around 18:00, after the noon auction, so this row shows what good forecasts are worth, not what was possible with public data. A trader would buy commercial forecasts to get there. The 100&nbsp;MW illustration assumes the same edge per MW, a single day-ahead market and no market impact from a larger fleet. Larger fleets can move prices, so the real gain could be lower.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2 data-i18n="how.title">How it works</h2>
+      <p class="body" data-i18n="how.p">For the technical reader. Each day is tested using only data that was available before that day's auction.</p>
+      <ol class="steps">
+        <li><div><h3 data-i18n="h1">Forecast</h3><p data-i18n="p1">A machine-learning model (gradient boosting) predicts tomorrow's 24 hourly prices from recent prices and the calendar. It learns from 2023 onward and is retrained every month on past data only.</p></div></li>
+        <li><div><h3 data-i18n="h2">Plan</h3><p data-i18n="p2">An optimiser (a <span class="term">MILP</span>, which finds the best schedule within hard limits) decides when to charge and sell, respecting the battery's power, storage, energy losses and wear.</p></div></li>
+        <li><div><h3 data-i18n="h3">Compare</h3><p data-i18n="p3">The plan is paid at the real prices and compared with a <span class="term">simple rule</span> (assume tomorrow repeats today) and <span class="term">perfect hindsight</span> (knowing the real prices in advance, the ceiling no forecast can beat).</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2 data-i18n="next.title">A basic model, and what it is missing</h2>
+      <p class="body" data-i18n="next.p">The gap to the ceiling is the value of a better forecast. I tested which inputs close it:</p>
+      <div class="inputs">
+        <div>
+          <h3 data-i18n="in.add.h">What I tested</h3>
+          <ul class="next">
+            <li data-i18n="in.add.1">Two more years of price history: the biggest clean gain, from 84% to 91% of the ceiling</li>
+            <li data-i18n="in.add.2">The grid operators' wind and solar forecasts: up to 95%, but they are published after the auction</li>
+            <li data-i18n="in.add.3">Public weather forecasts, the demand forecast, holidays and neighbouring prices: a smaller forecast error, but no extra profit yet</li>
+          </ul>
+        </div>
+        <div>
+          <h3 data-i18n="in.no.h">Would help, but I have no access</h3>
+          <ul class="next missing">
+            <li data-i18n="in.no.0">Commercial wind and solar forecasts available before the auction</li>
+            <li data-i18n="in.no.1">Gas and CO₂ prices, which set the cost of the plants that fill the evening peak (licensed market data)</li>
+            <li data-i18n="in.no.2">Intraday and balancing market data, where batteries earn much of their money (licensed)</li>
+            <li data-i18n="in.no.3">A real battery's operating data, limits and contracts</li>
+          </ul>
+        </div>
+      </div>
+      <div class="about">
+        <p data-i18n="about">I'm <strong>Kai Scott Thomas</strong>, studying Business, Economics and Data Science at NHH in Bergen. This is an independent project that I designed, built and tested on my own.</p>
+        <a class="btn primary" href="https://www.linkedin.com/in/kai-scott-thomas" target="_blank" rel="noopener" data-i18n="btn.li">Contact me on LinkedIn</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Kai Scott Thomas</span>
+    <span data-i18n="foot">Data: Bundesnetzagentur | SMARD.de (CC BY 4.0), Open-Meteo (CC BY 4.0)</span>
+  </div>
+</footer>
+
+<script>
+  // ── Model output for 1 June 2025 (from export_web_v2.py → output/web_day_v2.json) ──
+  const DAY = {"price": [92.53, 85.22, 77.13, 74.09, 72.66, 66.11, 35.84, 13.0, 2.4, -0.01, -0.6, -2.11, -5.48, -12.93, -20.41, -15.61, -6.0, -0.99, 19.23, 78.85, 93.66, 106.86, 105.93, 90.49], "forecast": [86.81, 89.5, 84.24, 76.18, 76.14, 70.24, 70.0, 57.38, 23.13, -2.12, -17.07, -23.66, -27.97, -49.03, -39.69, -25.71, -20.66, 17.14, 67.92, 117.52, 134.99, 137.92, 117.21, 100.91], "net": [0.0, -0.0, -0.0, -0.0, 0.0, -0.0, -0.0, -0.0, -0.0, 0.0, -0.0, 0.0, -0.105, -1.0, -1.0, 0.0, 0.0, -0.0, -0.0, 0.0, 0.9, 1.0, 0.0, 0.0]};
+
+  // English lives in the HTML above; NO and DE override it.
+  const I18N = {
+    no: {
+      'meta.desc': "Et batteri planlagt med ML-prisprognose og en MILP tjente 68&nbsp;084&nbsp;€ per MW i det tyske day-ahead-markedet fra februar til desember 2025, 3&nbsp;800&nbsp;€ mer enn en enkel regel.",
+      'claim': "Et batteri tjener penger ved å kjøpe strøm når den er billig og selge den når den er dyr. Jeg har laget en modell som bestemmer når det skal gjøre hva.",
+      'result': "Testet på ekte tyske strømpriser tjente et batteri på 1&nbsp;MW styrt av modellen min <strong>68&nbsp;084&nbsp;€</strong> fra februar til desember 2025, 91&nbsp;% av det mest det kunne ha tjent.",
+      'stat1': "mer enn en enkel tommelfingerregel, for ett batteri på 1&nbsp;MW over 11 måneder i 2025",
+      'stat2': "den samme fordelen på en portefølje på 100&nbsp;MW <span class=\"scale-tag\">Illustrasjon</span>",
+      'idea.title': 'Ideen på 30 sekunder',
+      'i1h': 'Prisene endrer seg hver time', 'i1p': "På solrike dager fyller solcellene nettet midt på dagen, og strømmen blir billig, noen ganger under null. Om kvelden er sola borte, folk er hjemme, og strømmen blir dyr.",
+      'i2h': 'Batteriet flytter energi i tid', 'i2p': "Det lader når strømmen er billig og selger den tilbake når den er dyr. Prisforskjellen, minus energitap og slitasje, er fortjenesten.",
+      'i3h': 'Haken: planen lages før prisene er kjent', 'i3p': "Innen kl. 12 hver dag må batteriets plan for hele morgendagen leveres til kraftbørsen. Morgendagens priser publiseres først etterpå. Planen må derfor bygge på en prognose, og jo bedre prognosen er, desto mer tjener batteriet.",
+      'btn.results': 'Se resultatene', 'btn.code': "Last ned koden <small>.zip</small>",
+      'c1.title': 'Én ekte dag: 1. juni 2025',
+      'lg.actual': 'Ekte pris', 'lg.forecast': 'Min prognose', 'lg.charge': 'Kjøpe og lade', 'lg.discharge': 'Selge',
+      'c1.aria': 'Strømpriser per time 1. juni 2025. Batteriet lader midt på dagen når prisene er negative, og selger i kveldstoppen.',
+      'c1.note': "Midt på dagen presset solkraft prisene under null, så batteriet fikk betalt for å lade. Om kvelden solgte det for over 100&nbsp;€ per MWh. Det tjente 206&nbsp;€ den dagen; med de ekte prisene kjent på forhånd kunne det tjent 221&nbsp;€. Prognosen bommet på de nøyaktige tallene, men traff formen på dagen, og det er det planen trenger.",
+      'res.title': 'Resultater',
+      'res.p1': "Hva et batteri på 1&nbsp;MW tjente over 11 måneder med hver måte å planlegge på. <strong>Perfekt etterpåklokskap</strong> kjenner de ekte prisene på forhånd: det mest mulige, som ingen kan nå. Den <strong>enkle regelen</strong> antar at morgendagens priser blir som i dag. <strong>Modellen min slår den enkle regelen med 3&nbsp;800&nbsp;€.</strong>",
+      'how.p': "For den tekniske leseren. Hver dag testes kun med data som fantes før den dagens auksjon.",
+      'res.aria': 'Inntekt per MW etter strategi',
+      't.strategy': 'Strategi', 't.feb': 'Feb–des 2025',
+      'lg.perfect': 'Perfekt etterpåklokskap', 'lg.ml': 'Min modell', 'lg.naive': 'Enkel regel',
+      'res.note': "Batteri på 1 MW / 2 MWh, kun day-ahead-markedet, før nettleie og avgifter. Testperioden er februar–desember 2025; januar er den første måneden i 2025 modellene lærer av. *Nettoperatørene publiserer disse vind- og solprognosene rundt kl. 18, etter auksjonen kl. 12. Raden viser derfor hva gode prognoser er verdt, ikke hva som var mulig med offentlige data. En trader måtte kjøpt kommersielle prognoser for å komme dit. Illustrasjonen med 100&nbsp;MW forutsetter samme fordel per MW, ett enkelt day-ahead-marked og ingen markedspåvirkning fra en større batteriflåte. Større flåter kan flytte prisene, så den reelle gevinsten kan bli lavere.",
+      'how.title': 'Slik fungerer det',
+      'h1': 'Prognose', 'p1': "En maskinlæringsmodell (gradient boosting) spår morgendagens 24 timepriser ut fra nylige priser og kalenderen. Den lærer av data fra 2023 og trenes på nytt hver måned, kun på tidligere data.",
+      'h2': 'Plan', 'p2': 'En optimeringsmodell (en <span class="term">MILP</span>, som finner den beste planen innenfor faste grenser) bestemmer når batteriet lader og selger, og tar hensyn til effekt, lager, energitap og slitasje.',
+      'h3': 'Sammenligning', 'p3': 'Planen gjøres opp mot de ekte prisene og sammenlignes med en <span class="term">enkel regel</span> (anta at i morgen blir som i dag) og <span class="term">perfekt etterpåklokskap</span> (å kjenne de ekte prisene på forhånd, taket ingen prognose kan slå).',
+      'next.title': 'En enkel modell, og hva den mangler',
+      'next.p': "Avstanden til taket er verdien av en bedre prognose. Jeg testet hvilke data som minsker den:",
+      'in.add.h': "Det jeg har testet",
+      'in.add.1': "To år ekstra med prisdata: den største rene gevinsten, fra 84&nbsp;% til 91&nbsp;% av taket",
+      'in.add.2': "Nettoperatørenes vind- og solprognoser: opptil 95&nbsp;%, men de publiseres etter auksjonen",
+      'in.add.3': "Offentlige værprognoser, forbruksprognose, helligdager og priser i nabolandene: mindre prognosefeil, men ingen ekstra fortjeneste ennå",
+      'in.no.h': 'Ville hjulpet, men jeg har ikke tilgang',
+      'in.no.1': 'Gass- og CO₂-priser, som bestemmer kostnaden for kraftverkene som dekker kveldstoppen (lisensierte markedsdata)',
+      'in.no.2': 'Data fra intradag- og balansemarkedet, der batterier tjener mye av pengene sine (lisensiert)',
+      'in.no.3': 'Driftsdata, grenser og kontrakter for et ekte batteri',
+      'about': 'Jeg er <strong>Kai Scott Thomas</strong> og studerer Business, Economics and Data Science ved NHH i Bergen. Dette er et selvstendig prosjekt som jeg har utviklet, bygget og testet på egen hånd.',
+      'btn.li': 'Kontakt meg på LinkedIn',
+      'foot': "Data: Bundesnetzagentur | SMARD.de (CC BY 4.0), Open-Meteo (CC BY 4.0)",
+      'ax.sell': 'Selge', 'ax.charge': 'Lade',
+      'lg.withfc': "Med vind- og solprognoser*",
+      'lg.first': "Første versjon (kun data fra 2025)",
+      'in.no.0': "Kommersielle vind- og solprognoser som finnes før auksjonen",
+      'nav.contact': 'Kontakt',
+      'hl.l': "ekstra inntekt modellen min ville gitt sammenlignet med en enkel tommelfingerregel, på en batteriportefølje på 100&nbsp;MW, februar til desember 2025",
+      'hl.calc': 'Illustrasjon, skalert opp fra ett batteri:',
+      'hl.calc2': ', forutsatt at den større batteriflåten ikke flytter prisene.',
+      'lg1': 'tjent av ett batteri på 1&nbsp;MW styrt av modellen min, på ekte tyske priser',
+      'lg2': 'av optimum oppnådd, mot den enkle regelen: 35&nbsp;% mindre avstand',
+      'lg3': 'mer enn den enkle regelen, for det ene batteriet',
+      'pct': '91&nbsp;% <span class="vs">mot 86&nbsp;%</span>',
+      'lg.neg': 'Pris under null',
+      'c1.src': 'Priser: Bundesnetzagentur | SMARD.de (CC BY 4.0)',
+      'scale': "<span class=\"scale-tag\">Illustrasjon</span> I porteføljeskala blir det betydelig: på 100&nbsp;MW batterier (en eksempelstørrelse, ikke et ekte anlegg) ville den samme fordelen vært verdt rundt <strong>380&nbsp;000&nbsp;€</strong> i de samme 11 månedene.",
+    },
+    de: {
+      'meta.desc': "Ein Batteriespeicher, gesteuert mit ML-Preisprognose und MILP-Optimierung, erzielte von Februar bis Dezember 2025 am deutschen Day-Ahead-Markt 68.084&nbsp;€ pro MW, 3.800&nbsp;€ mehr als mit einer einfachen Faustregel.",
+      'claim': "Ein Batteriespeicher verdient Geld, indem er Strom kauft, wenn er billig ist, und verkauft, wenn er teuer ist. Ich habe ein Modell gebaut, das entscheidet, wann was passiert.",
+      'result': "Getestet mit echten deutschen Strompreisen hat ein 1-MW-Speicher, gesteuert von meinem Modell, von Februar bis Dezember 2025 <strong>68.084&nbsp;€</strong> erwirtschaftet, 91&nbsp;% des höchstmöglichen Ertrags.",
+      'stat1': "mehr als mit einer einfachen Faustregel, für einen 1-MW-Speicher in 11 Monaten 2025",
+      'stat2': "derselbe Vorsprung bei einem Portfolio von 100&nbsp;MW <span class=\"scale-tag\">Zur Veranschaulichung</span>",
+      'idea.title': 'Die Idee in 30 Sekunden',
+      'i1h': 'Strompreise ändern sich stündlich', 'i1p': "An sonnigen Tagen fluten Solaranlagen mittags das Netz, und Strom wird billig, manchmal sogar negativ. Abends ist die Sonne weg, die Menschen sind zu Hause, und Strom wird teuer.",
+      'i2h': 'Der Speicher verschiebt Energie zeitlich', 'i2p': "Er lädt, wenn Strom billig ist, und verkauft ihn, wenn er teuer ist. Die Preisdifferenz abzüglich Verlusten und Verschleiß ist der Gewinn.",
+      'i3h': 'Der Haken: Geplant wird, bevor die Preise feststehen', 'i3p': "Jeden Tag bis 12 Uhr muss der Fahrplan des Speichers für den ganzen nächsten Tag an der Strombörse eingereicht werden. Die Preise für morgen werden erst danach veröffentlicht. Der Plan muss also auf einer Prognose beruhen, und je besser die Prognose, desto höher der Ertrag.",
+      'btn.results': 'Zu den Ergebnissen', 'btn.code': "Code herunterladen <small>.zip</small>",
+      'c1.title': 'Ein echter Tag: 1. Juni 2025',
+      'lg.actual': 'Echter Preis', 'lg.forecast': 'Meine Prognose', 'lg.charge': 'Kaufen und laden', 'lg.discharge': 'Verkaufen',
+      'c1.aria': 'Stündliche Strompreise am 1. Juni 2025. Der Speicher lädt mittags bei negativen Preisen und verkauft abends zur Preisspitze.',
+      'c1.note': "Mittags drückte Solarstrom die Preise unter null, der Speicher wurde also fürs Laden bezahlt. Abends verkaufte er für über 100&nbsp;€ pro MWh. An diesem Tag brachte das 206&nbsp;€; mit vorab bekannten echten Preisen wären 221&nbsp;€ möglich gewesen. Die Prognose lag bei den genauen Werten daneben, hat den Tagesverlauf aber richtig erkannt, und genau darauf kommt es beim Plan an.",
+      'res.title': 'Ergebnisse',
+      'res.p1': "Was ein 1-MW-Speicher in 11 Monaten mit der jeweiligen Planung verdient hat. <strong>Perfekte Voraussicht</strong> kennt die echten Preise vorab: das Maximum, das niemand erreichen kann. Die <strong>einfache Faustregel</strong> nimmt an, dass morgen die Preise von heute gelten. <strong>Mein Modell schlägt die Faustregel um 3.800&nbsp;€.</strong>",
+      'how.p': "Für technisch Interessierte. Jeder Tag wird nur mit Daten getestet, die vor der jeweiligen Auktion vorlagen.",
+      'res.aria': 'Erlöse pro MW nach Strategie',
+      't.strategy': 'Strategie', 't.feb': 'Feb.–Dez. 2025',
+      'lg.perfect': 'Perfekte Voraussicht', 'lg.ml': 'Mein Modell', 'lg.naive': 'Einfache Faustregel',
+      'res.note': "Batteriespeicher mit 1 MW / 2 MWh, nur Day-Ahead-Markt, ohne Netzentgelte und Steuern. Testzeitraum ist Februar bis Dezember 2025; der Januar ist der erste Monat 2025, aus dem die Modelle lernen. *Die Übertragungsnetzbetreiber veröffentlichen diese Wind- und Solarprognosen gegen 18 Uhr, also nach der Auktion um 12 Uhr. Die Zeile zeigt daher, was gute Prognosen wert sind, nicht was mit öffentlichen Daten möglich war. Ein Händler müsste dafür kommerzielle Prognosen einkaufen. Die Hochrechnung auf 100&nbsp;MW setzt denselben Vorsprung pro MW, nur den Day-Ahead-Markt und keinen Einfluss eines größeren Speicherparks auf die Preise voraus. Größere Speicherparks können die Preise verschieben, der tatsächliche Zugewinn könnte daher geringer ausfallen.",
+      'how.title': 'So funktioniert es',
+      'h1': 'Prognose', 'p1': "Ein Machine-Learning-Modell (Gradient Boosting) sagt die 24 Stundenpreise des nächsten Tages anhand der jüngsten Preise und des Kalenders voraus. Es lernt aus Daten ab 2023 und wird jeden Monat neu trainiert, ausschließlich mit vergangenen Daten.",
+      'h2': 'Fahrplan', 'p2': 'Ein Optimierungsmodell (ein <span class="term">MILP</span>, das den bestmöglichen Fahrplan unter festen Randbedingungen berechnet) legt fest, wann geladen und verkauft wird. Dabei berücksichtigt es Leistung, Kapazität, Wirkungsgradverluste und Verschleiß.',
+      'h3': 'Vergleich', 'p3': 'Der Fahrplan wird mit den tatsächlichen Preisen abgerechnet und mit zwei Maßstäben verglichen: einer <span class="term">einfachen Faustregel</span> (morgen wird wie heute) und <span class="term">perfekter Voraussicht</span> (die tatsächlichen Preise sind vorab bekannt; diese Obergrenze kann keine Prognose übertreffen).',
+      'next.title': 'Ein einfaches Modell und was noch fehlt',
+      'next.p': "Der Abstand zur Obergrenze zeigt, wie viel eine bessere Prognose wert wäre. Getestet habe ich, welche Daten ihn verkleinern:",
+      'in.add.h': "Was ich getestet habe",
+      'in.add.1': "Zwei zusätzliche Jahre Preisdaten: der größte saubere Gewinn, von 84&nbsp;% auf 91&nbsp;% der Obergrenze",
+      'in.add.2': "Wind- und Solarprognosen der Netzbetreiber: bis zu 95&nbsp;%, sie erscheinen aber erst nach der Auktion",
+      'in.add.3': "Öffentliche Wetterprognosen, Verbrauchsprognose, Feiertage und Preise der Nachbarländer: kleinerer Prognosefehler, aber noch kein zusätzlicher Ertrag",
+      'in.no.h': 'Hilfreich, aber für mich nicht zugänglich',
+      'in.no.1': 'Gas- und CO₂-Preise, die die Kosten der Kraftwerke zur abendlichen Spitzenlast bestimmen (lizenzpflichtige Marktdaten)',
+      'in.no.2': 'Daten aus dem Intraday- und dem Regelenergiemarkt, wo Speicher einen Großteil ihrer Erlöse erzielen (lizenzpflichtig)',
+      'in.no.3': 'Betriebsdaten, technische Grenzen und Verträge eines realen Speichers',
+      'about': 'Ich bin <strong>Kai Scott Thomas</strong> und studiere Business, Economics and Data Science an der NHH in Bergen. Dies ist ein eigenständiges Projekt, das ich allein konzipiert, umgesetzt und getestet habe.',
+      'btn.li': 'Kontakt über LinkedIn',
+      'foot': "Daten: Bundesnetzagentur | SMARD.de (CC BY 4.0), Open-Meteo (CC BY 4.0)",
+      'ax.sell': 'Verkauf', 'ax.charge': 'Laden',
+      'lg.withfc': "Mit Wind- und Solarprognosen*",
+      'lg.first': "Erste Version (nur Daten von 2025)",
+      'in.no.0': "Kommerzielle Wind- und Solarprognosen, die schon vor der Auktion vorliegen",
+      'nav.contact': 'Kontakt',
+      'hl.l': "zusätzlicher Ertrag, den mein Modell gegenüber einer einfachen Faustregel bei einem Speicherportfolio von 100&nbsp;MW erzielen würde, Februar bis Dezember 2025",
+      'hl.calc': 'Zur Veranschaulichung, hochgerechnet von einem Speicher:',
+      'hl.calc2': ', unter der Annahme, dass der größere Speicherpark die Preise nicht verschiebt.',
+      'lg1': 'erwirtschaftet von einem 1-MW-Speicher, gesteuert von meinem Modell, mit echten deutschen Preisen',
+      'lg2': 'des Optimums erreicht, im Vergleich zur Faustregel: 35&nbsp;% weniger Abstand',
+      'lg3': 'mehr als mit der einfachen Faustregel, für diesen einen Speicher',
+      'pct': '91&nbsp;% <span class="vs">vs. 86&nbsp;%</span>',
+      'lg.neg': 'Preis unter null',
+      'c1.src': 'Preise: Bundesnetzagentur | SMARD.de (CC BY 4.0)',
+      'scale': "<span class=\"scale-tag\">Zur Veranschaulichung</span> Hochgerechnet auf 100&nbsp;MW Batteriespeicher (eine Beispielgröße, keine reale Anlage) entspräche dieser Vorsprung im selben Zeitraum von elf Monaten rund <strong>380.000&nbsp;€</strong>.",
+    },
+  };
+
+  const meta = document.querySelector('meta[name="description"]');
+  I18N.en = { 'meta.desc': meta.content, 'ax.sell': 'Sell', 'ax.charge': 'Charge' };
+  document.querySelectorAll('[data-i18n]').forEach(el => { I18N.en[el.dataset.i18n] ??= el.innerHTML; });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => { I18N.en[el.dataset.i18nAria] ??= el.getAttribute('aria-label'); });
+
+  const LANGS = ['en', 'no', 'de'];
+  const HTML_LANG = { en: 'en', no: 'nb', de: 'de' };
+  const LOCALE = { en: 'en-GB', no: 'nb-NO', de: 'de-DE' };
+  let lang = 'en';
+  const t = k => I18N[lang][k] ?? I18N.en[k];
+
+  function pickInitialLang() {
+    const q = new URLSearchParams(location.search).get('lang');
+    if (LANGS.includes(q)) return q;
+    try { const s = localStorage.getItem('lang'); if (LANGS.includes(s)) return s; } catch (e) {}
+    for (const l of navigator.languages || [navigator.language]) {
+      const p = (l || '').toLowerCase().slice(0, 2);
+      if (p === 'nb' || p === 'nn' || p === 'no') return 'no';
+      if (p === 'de') return 'de';
+      if (p === 'en') return 'en';
+    }
+    return 'en';
+  }
+  const euro = v => new Intl.NumberFormat(LOCALE[lang], { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
+
+  function setLang(l, save) {
+    lang = l;
+    document.documentElement.lang = HTML_LANG[l];
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.innerHTML = t(el.dataset.i18n); });
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+    document.querySelectorAll('[data-eur]').forEach(el => { el.textContent = euro(+el.dataset.eur); });
+    meta.content = t('meta.desc');
+    document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
+    if (save) { try { localStorage.setItem('lang', l); } catch (e) {} }
+    drawDay();
+  }
+
+  // ── Chart: plain SVG drawn at the box's real width, colours from the theme tokens ──
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent, text) {
+    const e = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    if (text != null) e.textContent = text;
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  const chartBox = document.getElementById('dayChart');
+  const boxWidth = () => Math.max(300, Math.round(chartBox.clientWidth || 720));
+
+  function drawDay() {
+    const { price, forecast, net } = DAY;
+    const W = boxWidth(), narrow = W < 500;
+    const L = 64, R = 8, T = 24, PH = narrow ? 170 : 210, GAP = 26, BH = narrow ? 60 : 72;
+    const H = T + PH + GAP + BH + 22;
+    chartBox.innerHTML = '';
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, 'aria-hidden': 'true' }, chartBox);
+    const ink = css('--ink'), muted = css('--muted'), line = css('--line');
+    const n = price.length, x = i => L + (i + 0.5) * (W - L - R) / n, bw = (W - L - R) / n * 0.7;
+    const lo = -80, hi = 120, y = v => T + (hi - v) / (hi - lo) * PH;
+
+    // Negative-price zone: the hours the battery is paid to charge
+    el('rect', { x: L, y: y(0), width: W - L - R, height: y(lo) - y(0), fill: css('--neg') }, svg);
+    el('text', { x: L - 10, y: 12, 'text-anchor': 'end' }, svg, '€/MWh');
+    for (const v of [-50, 0, 50, 100]) {
+      el('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: v === 0 ? muted : line }, svg);
+      el('text', { x: L - 10, y: y(v) + 4, 'text-anchor': 'end' }, svg, v);
+    }
+    const path = arr => arr.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+    el('path', { d: path(forecast), fill: 'none', stroke: muted, 'stroke-width': 2, 'stroke-dasharray': '5 4' }, svg);
+    el('path', { d: path(price), fill: 'none', stroke: ink, 'stroke-width': 2.4, 'stroke-linejoin': 'round' }, svg);
+    price.forEach((v, i) => el('circle', { cx: x(i), cy: y(v), r: 2.6, fill: ink }, svg));
+
+    // Battery strip: sell above the line, charge below it
+    const by0 = T + PH + GAP, mid = by0 + BH / 2;
+    el('line', { x1: L, x2: W - R, y1: mid, y2: mid, stroke: line }, svg);
+    el('text', { x: L - 10, y: by0 + 12, 'text-anchor': 'end', class: 'axis-word', style: `fill:${css('--money')}` }, svg, t('ax.sell'));
+    el('text', { x: L - 10, y: by0 + BH - 2, 'text-anchor': 'end', class: 'axis-word', style: `fill:${css('--charge-ink')}` }, svg, t('ax.charge'));
+    net.forEach((v, i) => {
+      if (Math.abs(v) < 0.01) return;
+      const h = Math.abs(v) * (BH / 2);
+      el('rect', { x: x(i) - bw / 2, y: v > 0 ? mid - h : mid, width: bw, height: h, rx: 2,
+                   fill: v > 0 ? css('--money') : css('--charge') }, svg);
+    });
+    for (const hr of narrow ? [0, 6, 12, 18] : [0, 6, 12, 18, 23]) {
+      el('text', { x: x(hr), y: H - 2, 'text-anchor': 'middle' }, svg, String(hr).padStart(2, '0') + ':00');
+    }
+  }
+
+  document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang, true)));
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawDay);
+  let lastW = 0;
+  new ResizeObserver(() => { const w = boxWidth(); if (w !== lastW) { lastW = w; drawDay(); } }).observe(chartBox);
+  setLang(pickInitialLang(), false);
+</script>
+</body>
+</html>

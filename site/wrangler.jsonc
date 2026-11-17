@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Battery Dispatch project page. Static files only, public (no password),
+  // and separate from the main kaiscottthomas.com site.
+  "name": "battery",
+  "compatibility_date": "2026-09-01",
+  "assets": { "directory": "public" },
+  "routes": [{ "pattern": "battery.kaiscottthomas.com", "custom_domain": true }],
+  "workers_dev": false
+}
